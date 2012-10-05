@@ -1,7 +1,7 @@
 <?php
 /** Clase de funciones varias
 ** @author: Leonardo Molina lama_amx at hotmail dot com
-** @version: 3.4 2012.07.26
+** @version: 3.4
 ** @changelog:
 	3.4 2012.07.26: Added beginHTML5
 	3.3 2011.06.07: Added getItemFromObject method
@@ -43,11 +43,10 @@ class Utils {
 		$error ='';
 		$consQ =mysql_query (($consulta));
 		$error =mysql_error ();
-		Utils::log ($consulta, 'query', 1);
 		if ($error!=''){
 			Utils::log ($error, 'Utils::sql');
-
 		}
+		Utils::log ($consulta, 'query', 1);
 		$resultado =array ();
 		if ($consQ){
 			while ($consF =mysql_fetch_assoc ($consQ))
@@ -238,7 +237,8 @@ EOT;
 			if (self::$logToFile){
 				self::logToFile ($msg, $level);
 			}else
-				echo "<p>$msg</p>";
+				if ($level >= self::$logLevel || $level==0)
+					echo "<p>$msg</p>";
 		}
 	}
 	public static function trace ($variable, $message='', $level=0) {

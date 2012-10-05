@@ -1,12 +1,32 @@
 <?php require_once ('_php/amx/Utils.php'); require_once ('_php/sqlconfig.php');
+/* HOW TO USE
+class BDadmin_usuarios extends LinkSQL {
+	public function __construct (){
+		parent::__construct ("table_name");
+		$this->primaryKey ='id';
+		$this->fields =array (
+			 array ('private',	$this->primaryKey, "''")
+			,array ('public',	'usuario')
+			,array ('private',	'timestamp', 'CURRENT_TIMESTAMP')
+			,array ('system',	'(SOME SUBQUERY) AS field')
+		);
+//fields are:
+//private: when they're not editable. You must provide a default value to use on INSERT query
+//public: any other field
+//system: some subquery to be returned as a field
+		$this->defaultOrder ='id ASC'; //default order unless you especify another one in getRecords method
+	}
+}
+*/
 set_time_limit ( 0);
-ini_set ('display_errors', 0);
 /** Clase abstracta para el manejo de datos en tablas
 * @author: Leonardo Molina; lama_amx AT hotmail DOT com
-* @version 6.3
+* @version 6.5
 */
 /* changelog
 * @todo: opción de desactivar log
+	6.5	 2012-10-04: _getRecords method changed. Now it used $order_str param if defined; otherwise $defaultOrder is used.
+	6.4	 2012-09-27: Added getRowCount method
 	6.3	 2011-06-15: Se rehabilita la función utf8_decode en insertRecord / insertRecords
 	6.2	 2011-06-07: Se implementa la propiedad encoding en getRecords; se dehabilita la función utf8_decode en insertRecord / insertRecords
 	6.1	 2011-06-07: insertRecords devuelve el número de registros insertados
@@ -25,12 +45,12 @@ ini_set ('display_errors', 0);
 	4.7:	Se agrega el método getField
 	4.6:	Se agrega el método interno getRecords
 	4.5:	Se sustituye variable $returnSQLResult por $resultFormat
-		En método getRecordset, se agrega variable $toggleFormat
-	4.3: Arreglado: función getRecord
-	4.2: Se agrega función estática lastIdInserted
-	4.1: Se agrega propiedad defaultOrder
+			En método getRecordset, se agrega variable $toggleFormat
+	4.3: getRecord method fixed
+	4.2: lastIdInserted static method added
+	4.1: $defaultOrder property added
 */
-class LinkSQL {
+abstract class LinkSQL {
 	const UTF8 ='utf8';
 	const HTML ='html';
 	const NONE ='none';
@@ -66,6 +86,14 @@ class LinkSQL {
 
 ////////		Public Methods
 
+	public function getRowCount ($where_str=1){
+		$result =0;
+		$records =$this->sql ('SELECT COUNT(*) AS total FROM '.$this->table.' WHERE '.$where_str);
+		if (!empty ($records))
+			$result =$records[0]['total'];
+		return $result;
+	}
+	
 		/** Devuelve los registros de la tabla
 		** @param $where_str: Cadena=''. Condición para filtrar resultados.
 		** @param $order_str: Cadena=''. Campo sobre el que se ordenarán los registros.
@@ -75,18 +103,19 @@ class LinkSQL {
 	public function getRecordset ($where_str=false, $order_str=false, $count=false, $start=0){
 		return $this->_getRecords ($where_str, $order_str, $count, $start, self::SQL_FORMAT);
 	}
-	/** Devuelve los registros de la tabla como arreglo asociativo, independientemente del valor de la propiedad resultFormat
-	** Todos los parámetros son como en getRecordset
-	** @see getRecord
-	*/
+		/** Devuelve los registros de la tabla como arreglo asociativo, independientemente del valor de la propiedad resultFormat
+		** Todos los parámetros son como en getRecordset
+		** @see getRecord
+		*/
 	public function getRecords ($where_str=false, $order_str=false, $count=false, $start=0){
 		return $this->_getRecords ($where_str, $order_str, $count, $start, self::ARRAY_FORMAT);
 	}
 	private function _getRecords ($where_str=false, $order_str=false, $count=false, $start=0, $resultFormat){
 		$where =$where_str ? "WHERE $where_str" : "";
-		$order =$order_str ? "ORDER BY $order_str" : '';
+		$order ='';
 		if ($this->defaultOrder != '')
 			$order ="ORDER BY {$this->defaultOrder}";
+		$order =$order_str ? "ORDER BY $order_str" : $order;
 		$limit = $count ? "LIMIT $start, $count" : "";
 		$campos =$this->getAllFields ();
 		$query ="SELECT $campos FROM {$this->table} $where $order $limit";
@@ -320,7 +349,12 @@ Utils::log ($sql, 'sql', 2);
 		$return =array ();
 		$fields =$this->getFieldsByType ('private');
 		foreach ($fields as $field){
-			array_push ($return, $field[2]);
+			$result ='';
+			if (isset ($field[2]))
+				$result =$field[2];
+			if (empty($result))
+				$result ="''";
+			array_push ($return, $result);
 		}
 		return $asArray ? $return : implode (', ', $return);
 	}
@@ -333,6 +367,7 @@ Utils::log ($sql, 'sql', 2);
 	}
 		/** @private */
 	protected function sql ($consulta){
+		$this->lastSQL =$consulta;
 		return Utils::sql ($consulta);
 	}
 }?>
