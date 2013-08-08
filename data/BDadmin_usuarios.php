@@ -1,4 +1,4 @@
-<?php	require_once ('LinkSQL.php');
+<?php
 	/** Clase para acceso de datos
 	* Hereda de: LinkSQL
 	* @version: 1.0

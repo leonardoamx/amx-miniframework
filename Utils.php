@@ -1,8 +1,13 @@
 <?php
 /** Clase de funciones varias
 ** @author: Leonardo Molina lama_amx at hotmail dot com
-** @version: 3.4
+** @version: 3.7
 ** @changelog:
+	3.6 2013.06.27:  Added booleanValue
+	3.6 2013.04.12:  Added containsSomeValue
+	3.5 2013.02.15: 
+		sql method was moved to LinkSQL
+		log methos were moved to Logger Class
 	3.4 2012.07.26: Added beginHTML5
 	3.3 2011.06.07: Added getItemFromObject method
 	3.2 Revision
@@ -19,41 +24,12 @@
 	2.2 Added getMonthList: returns a list of months
 	2.2 Added getWeekList: returns a list of days
 	2.1 Added explodeToArray
-
 */
-class Utils {
-	const NO_CASE_TRANSFORM		=false;
-	const CASE_TRANSFORM			=true;
-	const PRESERVE_WHITESPACE	=false;
-	const DELETE_WHITESPACE		=true;
 
-	public static $logEnabled			=true;
-	public static $logLevel				=2;
-	public static $logToFile				=true;
-	public static $logPathDeveloment	='logs-amx.txt';
-	public static $logPathLive			='logs-amx.txt';
+class Utils {
 
 	private static $htmlLanguage;
 
-		/** Convierte el resultado de una consulta SQL a una matriz asociativa
-		 * @param $consulta String, Consulta SQL a ejecutar
-		 * @return resultado, como arreglo asociativo.
-		 */
-	public static function sql ($consulta){
-		$error ='';
-		$consQ =mysql_query (($consulta));
-		$error =mysql_error ();
-		if ($error!=''){
-			Utils::log ($error, 'Utils::sql');
-		}
-		Utils::log ($consulta, 'query', 1);
-		$resultado =array ();
-		if ($consQ){
-			while ($consF =mysql_fetch_assoc ($consQ))
-				array_push ($resultado, $consF);
-			}
-		return $resultado;
-		}
 		/** Convierte $texto a minúsculas, reemplaza caracteres acentuados por letras simples y retira espacios
 		 * @param	$string: Texto a formatear
 		 * @return   Texto formateado
@@ -110,12 +86,30 @@ EOT;
 EOT;
 		}
 
+		/** check if a variable is equal to some value from a list of values
+		* @param mixed $variable: Variable to check
+		* @param array $values: List of valid values
+		* @return bool. True if the variable is equal to some of the values
+		*/
+	public static function containsSomeValue ($variable, $values){
+		if (!is_array ($values))
+			$values =array ($values);
+		$result =false;
+		foreach ($values as $v){
+			if ($variable == $v){
+				$result =true;
+				break;
+			}
+		}
+		return $result;
+	}
+
 		/** Divide una cadena en fragmentos, donde se encuentra el separador indicado y asigna cada fragmento a una posición en un arreglo. Elimina espacios al principio y final de cada índice
 		* @param $separador: Cadena. Caracter que se usará como separador
 		* @param $source: Texto a convertir en Arreglo
 		* @return Arreglo con la cadena dividida en fragmentos
 		*/
-	public function explodeToArray ($separador, $source){
+	public static function explodeToArray ($separador, $source){
 		$result =array ();
 		$result	=explode ($separador, $source);
 		foreach ($result as $k =>$v)
@@ -148,11 +142,16 @@ EOT;
 		*/
 	public static function findInObject ($obj, $prop, $term){
 		$ind =-1;
-		foreach ($obj as $k=>$v)
+		foreach ($obj as $k=>$v){
 			if ($v[$prop] == $term){
 				$ind =$k;
 				break;
-				}
+			}
+		}
+if (!is_array ($obj)) {
+	$e =new Exception ();
+	Logger::log ($e->getTraceAsString(), 'Utils.php findInObject');
+}
 		return $ind;
 		}
 
@@ -222,45 +221,12 @@ EOT;
 			array ('num' => 0, 'nombre' =>'Domingo'),
 			array ('num' => 1, 'nombre' =>'Lunes'),
 			array ('num' => 2, 'nombre' =>'Martes'),
-			array ('num' => 3, 'nombre' =>'Mi&eacute;rcoles'),
+			array ('num' => 3, 'nombre' =>'Miércoles'),
 			array ('num' => 4, 'nombre' =>'Jueves'),
 			array ('num' => 5, 'nombre' =>'Viernes'),
-			array ('num' => 6, 'nombre' =>'S&aacute;bado')
+			array ('num' => 6, 'nombre' =>'Sábado')
 			);
 		}
-
-	public static function log ($text, $message='', $level=0) {
-		if ($message != '')
-			$message ="($message): ";
-		$msg ="$message$text";
-		if (self::$logEnabled){
-			if (self::$logToFile){
-				self::logToFile ($msg, $level);
-			}else
-				if ($level >= self::$logLevel || $level==0)
-					echo "<p>$msg</p>";
-		}
-	}
-	public static function trace ($variable, $message='', $level=0) {
-		if ($message != '')
-			$message .=': ';
-		if (self::$logEnabled){
-			$msg =$message .'[trace] '.print_r ($variable, true);
-			if (self::$logToFile){
-				self::logToFile ($msg, $level);
-			}else{
-				echo "<pre>$msg</pre>";
-			}
-		}
-	}
-	public static function logToFile ($msg, $level=0) {
-		$logPath =$_SERVER['SERVER_NAME']=='localhost' ? self::$logPathDeveloment : self::$logPathLive;
-		if ($level >= self::$logLevel || $level==0){
-			$file =fopen ($logPath, 'a');
-			fputs ($file, "$msg\r\n");
-			fclose ($file);
-		}
-	}
 
 	public static function convert2ascii ($text){
 		$text = htmlentities($text, ENT_QUOTES, 'UTF-8');
@@ -320,13 +286,13 @@ EOT;
 	
 	public static function fromUTF8toEntities ($text){
 		$patron =array (
-			 'Á' =>'&aacute;'
-			,'É' =>'&eacute;'
-			,'Í' =>'&iacute;'
-			,'Ó' =>'&oacute;'
-			,'Ú' =>'&uacute;'
-			,'Ü' =>'&uuml;'
-			,'Ñ' =>'&ntilde;'
+			 'Á' =>'&Aacute;'
+			,'É' =>'&Eacute;'
+			,'Í' =>'&Iacute;'
+			,'Ó' =>'&Oacute;'
+			,'Ú' =>'&Uacute;'
+			,'Ü' =>'&Uuml;'
+			,'Ñ' =>'&Ntilde;'
 			,'á' =>'&aacute;'
 			,'é' =>'&eacute;'
 			,'í' =>'&iacute;'
@@ -365,5 +331,9 @@ EOT;
 
 	public static function booleanToString ($v, $trueVal='Sí', $falseVal='No'){
 		return (boolean) $v ? $trueVal : $falseVal;
+	}
+	
+	public static function booleanValue ($value){
+		return self::containsSomeValue ($value, array (1,'true','TRUE','YES',true));
 	}
 }?>

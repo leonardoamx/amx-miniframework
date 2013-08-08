@@ -8,9 +8,6 @@ class SMTPMailService {
 	public $subject	='';
 	public $message	='';
 
-	public function __construct (){
-	}
-
 	public function send ($host, $port, $username, $password){
 		$result =false;
 		$smtp = Mail::factory('smtp',

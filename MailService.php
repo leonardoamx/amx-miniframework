@@ -5,10 +5,8 @@ class MailService {
 	public $to		='';
 	public $subject	='';
 	public $message	='';
-	public $charset	='';
+	public $charset	='UTF-8';
 
-	public function __construct (){
-	}
 	public function send (){
 		$cabeceras ='';
 		$cabeceras .="MIME-Version: 1.0\r\n";

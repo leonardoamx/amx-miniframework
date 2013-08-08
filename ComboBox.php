@@ -1,14 +1,15 @@
-<?
+<?php
 /** Class ComboBox
-* Crea el código XHTML de un ComboBox.
+* Crea el código HTML de un ComboBox.
 * Las opciones del componente se pueden tomar de una matriz (a su vez creada desde una consulta SQL) o ser dados manualmente.
 * Permite definir un elemento que será seleccionado por defecto y un mensaje (prompt) para dar instrucciones
 * PHP version: 5.x
-* @version 2.3
+* @version 2.4
 * @author: Leonardo Molina; lama_amx AT hotmail DOT com
 *
 */
 /* CHANGELOG 
+	2.4 2013-04-08: Se agrega la propiedad $required (el soporte en navegadores está pendiente)
 	2.3 2013-07-01: Se agrega la propiedad $size para mostrar una lista en lugar de un combobox
 	2.2 2010-05-10: Se agrega la propiedad $showPrompt, para mostrar u omitir el texto de la propiedad $prompt
 */
@@ -29,6 +30,8 @@ class ComboBox {
 	public $prompt ='&nbsp;';
 		/** Boolean. Determina si se muestra una opción prompt */
 	public $showPrompt =true;
+		/** Boolean. indica si debe agregarse el atributo "required" */
+	public $required =false;
 		/** Número. Define la cantidad de items a mostrar. Ésto hace que en lugar de un combobox se muestre una lista de selección */
 	public $size =0;
 
@@ -69,13 +72,19 @@ class ComboBox {
 		*/
 	public function getHTML (){
 		$selected ='';
-		$size ='';
+		$attributes =array();
+//		$size ='';
 		if ($this->size > 0)
-			$size ='size="'.$this->size.'"';
+			array_push ($attributes, "size=\"{$this->size}\"");
+//			$size ='size="'.$this->size.'"';
+		if ($this->required)
+			array_push ($attributes, "required");
+		
+		$attributes =implode (' ', $attributes);
 		$html ='';
 		$html .=<<<EOT
 
-					<select id="{$this->id}" name="{$this->name}" $size>
+					<select id="{$this->id}" name="{$this->name}" $attributes>
 EOT;
 		if ($this->showPrompt){
 			$html .=<<<EOT
