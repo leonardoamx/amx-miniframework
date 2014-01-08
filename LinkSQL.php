@@ -1,7 +1,7 @@
 <?php
 /** Clase abstracta para el manejo de datos en tablas
 * @author: Leonardo Molina; lama_amx AT hotmail DOT com
-* @version 6.10
+* @version 7.0
 */
 
 /* HOW TO USE
@@ -29,6 +29,7 @@ class table_name extends LinkSQL {
 
 /* changelog
 * @todo: opción de desactivar log
+	7.0	 2013-12-16: Migration to mysqli
 	6.10	 2013-06-04: Changed useFieldsList method to useFields
 	6.9.1	 2013-05-20: Little optimization of getField with useFieldsList method.
 	6.9	 2013-05-06: Added 'record' type in fieldList
@@ -67,10 +68,10 @@ abstract class LinkSQL {
 	const SQL_FORMAT ='sql';
 	const ARRAY_FORMAT ='array';
 
-//	const NO_CASE_TRANSFORM		=false;
-//	const CASE_TRANSFORM		=true;
-//	const PRESERVE_WHITESPACE	=false;
-//	const DELETE_WHITESPACE		=true;
+	public static $server;
+	public static $user;
+	public static $password;
+	public static $database;
 
 	/** forma en que se devolverán los campos de textos
 	* @default LinkSQL::NONE
@@ -90,9 +91,11 @@ abstract class LinkSQL {
 	public $defaultOrder ='';
 	/** última sentencia SQL ejecutada */
 	public $lastSQL;
-	
+
 	private $currentJoinQuery;
 	private $currentFieldList;
+	
+	private static $dbConnection;
 
 	/** Constructor
 		** @param $table Nombre de la tabla que se manejará por esta instancia
@@ -102,13 +105,19 @@ abstract class LinkSQL {
 		$this->fields =array ();
 	}
 
+	public static function connect (){
+		if (empty (self::$dbConnection))
+			self::$dbConnection = new mysqli(self::$server, self::$user, self::$password, self::$database);
+	}
 		/** Convierte el resultado de una consulta SQL a una matriz asociativa
 		 * @param $consulta String, Consulta SQL a ejecutar
 		 * @return resultado, como arreglo asociativo.
 		 */
 	public static function sql ($consulta, $returnResult=true){
-		$consQ =mysql_query (($consulta));
-		$error =mysql_error ();
+		self::connect ();
+		$consQ = self::$dbConnection->query($consulta);
+
+		$error =self::$dbConnection->error;
 		$logLevel =1;
 		if ($error!=''){
 			self::logError ($error, 'LinkSQL::sql');
@@ -118,7 +127,7 @@ abstract class LinkSQL {
 		$resultado =array ();
 		if ($returnResult){
 			if ($consQ){
-				while ($consF =mysql_fetch_assoc ($consQ))
+				while ($consF =$consQ->fetch_assoc())
 					array_push ($resultado, $consF);
 			}
 		}
@@ -129,27 +138,26 @@ abstract class LinkSQL {
 
 	public function getRowCount ($where_str=1){
 		$result =0;
-//		$records =$this->sql ('SELECT COUNT(*) AS total FROM '.$this->table.' WHERE '.$where_str);
 		$records =self::sql ('SELECT COUNT(*) AS total FROM '.$this->table.' WHERE '.$where_str);
 		if (!empty ($records))
 			$result =$records[0]['total'];
 		return $result;
 	}
-	
+
 		/** Define una instrucción SQL que será insertada antes de la instrucción WHERE. Se aplica en la siguiente consulta SELECT y su valor se anula después de correr.
 		** @param string $query. Instrucción SQL a insertar
 		*/
 	public function useJoinClause ($query){
 		$this->currentJoinQuery =$query;
 	}
-	
+
 		/* Define los campos que la siguiente consulta getRecords, getRecordset o getRecord usará. Se usa antes de llamar uno de esos métodos. El ajuste es temporal; se descarta una vez que el método ha sido llamado
 		* @param $fieldList: Cadena=''. Lista de campos de la tabla
 		*/
 	public function useFields ($fieldList){
 		$this->currentFieldList =$fieldList;
 	}
-	
+
 		/** Devuelve los registros de la tabla
 		** @param $where_str: Cadena=''. Condición para filtrar resultados.
 		** @param $order_str: Cadena=''. Campo sobre el que se ordenarán los registros.
@@ -187,12 +195,13 @@ abstract class LinkSQL {
 		$query ="SELECT $campos FROM {$this->table} $joinQuery $where $order $limit";
 		switch ($resultFormat){
 			case self::SQL_FORMAT:
-				$result =mysql_query ($query);
+				self::connect ();
+				$result =self::$dbConnection->query ($query);
 				$this->lastSQL =$query;
-				$error =mysql_error();
+				$error =self::$dbConnection->error;
 				$logLevel =1;
 				if ($error != ''){
-					self::logError (mysql_error (), 'LinkSQL->_getRecords error');
+					self::logError ($error, 'LinkSQL->_getRecords error');
 					$logLevel =0;
 				}
 				self::logError ($query, 'LinkSQL->_getRecords', $logLevel);
@@ -256,6 +265,7 @@ abstract class LinkSQL {
 		** @param $data: Matriz con los valores a insertar. Deben estar declarados en el mismo orden en que los campos están definidos en la propiedad $fields
 		*/
 	public function insertRecord ($data){
+		self::connect ();
 		$campos =$this->getTableFields ();
 		$sysData =$this->getDefaultValues ();
 		foreach ($data as $k=>$value)
@@ -264,15 +274,18 @@ abstract class LinkSQL {
 		$query ="INSERT INTO {$this->table} ($campos) VALUES ($sysData, '$data')";
 		if (empty ($sysData))
 			$query ="INSERT INTO {$this->table} ($campos) VALUES ('$data')";
-		mysql_query ($query);
+		self::$dbConnection->query ($query);
 		$this->lastSQL =$query;
-		$error =mysql_error();
+		$error =self::$dbConnection->error;
 		$logLevel =2;
 		if ($error != ''){
-			self::logError ($error, 'insertRecord error', $logLevel);
 			$logLevel =0;
-		}else
-			self::logError ($this->lastIdInserted (), 'lastIdInserted at '.$this->table, $logLevel);
+			self::logError ($error, 'insertRecord error', $logLevel);
+		} else {
+			$lastIdInserted =$this->lastIdInserted();
+			if ($lastIdInserted > 0)
+				self::logError ($lastIdInserted, 'lastIdInserted at '.$this->table, $logLevel);
+		}
 		self::logError ($query, 'LinkSQL->insertRecord', $logLevel);
 		return $this->lastIdInserted ();
 	}
@@ -286,6 +299,7 @@ abstract class LinkSQL {
 			]
 		*/
 	public function insertRecords ($listData){
+		self::connect ();
 		$campos =$this->getTableFields ();
 		$sysData =$this->getDefaultValues ();
 
@@ -301,14 +315,15 @@ abstract class LinkSQL {
 		}
 		$records =implode (', ', $records);
 		$query ="INSERT INTO {$this->table} ($campos) VALUES $records";
-		mysql_query ($query);
+		self::$dbConnection->query ($query);
 		$logLevel =2;
+		$error =self::$dbConnection->$error;
 		if ($error != ''){
-			self::logError (mysql_error (), 'insertRecords error');
+			self::logError ($error, 'insertRecords error');
 			$logLevel =0;
 		}
 		self::logError ($query, 'LinkSQL->insertRecords', $logLevel);
-		return mysql_affected_rows();
+		return self::$dbConnection->$affected_rows;
 	}
 
 		/** Actualiza registros de una tabla
@@ -316,6 +331,7 @@ abstract class LinkSQL {
 		** @param $data: Matriz con los valores. Deben estar declarados en el mismo orden en que los campos están definidos en la propiedad $fields
 		**/
 	public function updateRecords ($where_str, $data){
+		self::connect ();
 		$campos =$this->getEditableFields (true);
 		$datos =array ();
 		foreach ($data as $k=>$value)
@@ -326,7 +342,7 @@ abstract class LinkSQL {
 		}
 		$datos =implode (", ", $datos);
 		$sql ="UPDATE {$this->table} SET $datos WHERE $where_str";
-		mysql_query ($sql);
+		self::$dbConnection->query ($sql);
 		$this->lastSQL =$sql;
 		return $this->validateOperation ();
 	}
@@ -362,8 +378,9 @@ abstract class LinkSQL {
 		** @param $where_str: Cadena. Condición que deben cumplir los registros que se borrarán.
 		*/
 	public function deleteRecordsByCondition ($where_str){
+		self::connect ();
 		$sql ="DELETE FROM {$this->table} WHERE $where_str";
-		mysql_query ($sql);
+		self::$dbConnection->query ($sql);
 		$this->lastSQL =$sql;
 		return $this->validateOperation ();
 	}
@@ -374,11 +391,12 @@ abstract class LinkSQL {
 		** @param $value: Texto. Nuevo valor del campo
 		*/
 	public function updateField ($ids, $field, $value){
+		self::connect ();
 		$value =utf8_decode ($value);
 		if (is_array ($ids))
 			$ids =implode (',', $ids);
 		$sql	="UPDATE {$this->table} SET $field=\"$value\" WHERE {$this->primaryKey} IN ($ids)";
-		mysql_query ($sql);
+		self::$dbConnection->query ($sql);
 		$this->lastSQL =$sql;
 		return $this->validateOperation ();
 	}
@@ -386,7 +404,7 @@ abstract class LinkSQL {
 		/** Devuelve el id del último registro
 		*/
 	public static function lastIdInserted (){
-		return mysql_insert_id ();
+		return self::$dbConnection->insert_id;
 	}
 
 	public function getAllFields ($asArray=false){
@@ -450,25 +468,17 @@ abstract class LinkSQL {
 		}
 		return $asArray ? $return : implode (', ', $return);
 	}
-	
+
 	public static function logError ($variable, $message='', $level=0){
-//		if (isset (Logger::$logEnabled)){
-//			Logger::log ($variable, $message, $level);
-//		}else{
-//			if ($level == 0)
-//				error_log ("$message: $variable");
-//		}
-//		if ($level == 0)
-			Logger::log ($variable, $message, $level);
-//			error_log ("$message: $variable");
+		Logger::log ($variable, $message, $level);
 	}
-	
+
 		/** @private */
 	protected function validateOperation (){
-		$result =mysql_error();
+		$result =self::$dbConnection->error;
 		$logLevel =2;
 		if ($result != ''){
-			self::logError ($result, 'mysql_error');
+			self::logError ($result, 'SQL error');
 			$logLevel =0;
 		}
 		self::logError ($this->lastSQL, 'lastSQL', $logLevel);

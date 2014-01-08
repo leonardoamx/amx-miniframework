@@ -1,7 +1,7 @@
 <?php //require_once ('Template2.php');
 	/** Prints a control to navigate through paginated records. It doesn't manage pages itself; it only prints a toolbar with buttons.
 		v0.1
-		
+
 	Changelog:
 		0.1 2012-10-16 First release
 	*/
@@ -12,41 +12,41 @@ class Pager {
 	public $currentPage;
 	public $totalPages;
 	public $template ='
-ini{
-	<p class="amxPager">
-}ini
-firstItem{
+ini[
+	<div class="amxPager">
+]ini
+firstItem[
 		<a class="button first" href="{url}"><span>	Primero		</span></a>
-}firstItem
-prevItem{
+]firstItem
+prevItem[
 		<a class="button prev" href="{url}"><span>	Anterior	</span></a>
-}prevItem
-nextItem{
+]prevItem
+nextItem[
 		<a class="button next" href="{url}"><span>	Siguiente	</span></a>
-}nextItem
-lastItem{
+]nextItem
+lastItem[
 		<a class="button last" href="{url}"><span>	Último		</span></a>
-}lastItem
-labels{
+]lastItem
+labels[
 			<span class="label value">{currentPage}</span>
 			<span class="label separator">/</span>
 			<span class="label total">{totalPages}</span>
-}labels
-firstItemDisabled{
+]labels
+firstItemDisabled[
 		<a class="button first disabled" href="{url}"><span>Primero		</span></a>
-}firstItemDisabled                                   
-prevItemDisabled{                                    
+]firstItemDisabled
+prevItemDisabled[
 		<a class="button prev disabled" href="{url}"><span>	Anterior	</span></a>
-}prevItemDisabled                                    
-nextItemDisabled{                                    
+]prevItemDisabled
+nextItemDisabled[
 		<a class="button next disabled" href="{url}"><span>	Siguiente	</span></a>
-}nextItemDisabled                                    
-lastItemDisabled{                                    
+]nextItemDisabled
+lastItemDisabled[
 		<a class="button last disabled" href="{url}"><span>	Último		</span></a>
-}lastItemDisabled
-fin{
-	</p>
-}fin
+]lastItemDisabled
+fin[
+	</div>
+]fin
 ';
 
 	private $result;

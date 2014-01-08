@@ -20,7 +20,7 @@ class Logger {
 			$message ="($message): ";
 		$msg ="$message$text";
 		if (self::$isFirstLog){
-			$date =date ('Y-m-d H:i:s');
+			$date =date ('==== Y-m-d H:i:s');
 			$msg ="\n$date\n$msg";
 			self::$isFirstLog =false;
 		}
@@ -46,7 +46,7 @@ class Logger {
 	}
 	public static function logToFile ($msg, $level=0) {
 		$logPath =$_SERVER['SERVER_NAME']=='localhost' ? self::$logPathDeveloment : self::$logPathLive;
-		if ($level >= self::$logLevel || $level==0){
+		if ($level>=self::$logLevel || $level==0){
 			$file =fopen ($logPath, 'a');
 			fputs ($file, "$msg\r\n");
 			fclose ($file);

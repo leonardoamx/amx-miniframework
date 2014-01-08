@@ -14,16 +14,28 @@ class MessageManager {
 	static public $template ='
 ini[
 	<div class="amx_messages">
-		<ul>
 ]ini
 item[
-			<li class="message {class}"><span>{message}</span></li>
+		<div class="message {class}">
+			<span>{message}</span>
+		</div>
 ]item
 end[
-		</ul>
 	</div>
 ]end
 ';
+
+	static public function addErrorMessage ($text){
+		self::addMessage ($text, self::ERROR);
+	}
+	
+	static public function addWarningMessage ($text){
+		self::addMessage ($text, self::WARNING);
+	}
+	
+	static public function addInfoMessage ($text){
+		self::addMessage ($text, self::INFO);
+	}
 
 	static public function addMessage ($message, $type){
 		if (!isset ($_SESSION['amxMessages']))
