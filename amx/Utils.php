@@ -1,22 +1,22 @@
 <?php
-/** Clase de funciones varias
+/** Class with miscellaneous methods
 ** @author: Leonardo Molina lama_amx at hotmail dot com
 ** @version: 3.7
 ** @changelog:
-	3.6 2013.06.27:  Added booleanValue
+	3.7 2013.06.27:  Added booleanValue
 	3.6 2013.04.12:  Added containsSomeValue
 	3.5 2013.02.15: 
-		sql method was moved to LinkSQL
-		log methos were moved to Logger Class
+		SQL method was moved to LinkSQL
+		log methods were moved to Logger Class
 	3.4 2012.07.26: Added beginHTML5
 	3.3 2011.06.07: Added getItemFromObject method
 	3.2 Revision
 	3.1 Added a third param in Utils::log and Utils::trace to place an optional text
 	3.0 Changed from constants to static properties: $logEnabled ,$logLevel ,$logToFile ,$logPathDeveloment ,$logPathLive
 	2.9 Added findInArray
-	2.8 sql method, modified.
+	2.8 SQL method, modified.
 	2.8 minor changes in log methods
-	2.7 log methods enhaced
+	2.7 log methods enhanced
 	2.6 Added $logToFile constant to work with Utils::log & Utils::trace methods
 	2.4 Modified string2ascii. Now lowercase transform and whitespaces elimination are optional
 	2.3 Added function extractField
