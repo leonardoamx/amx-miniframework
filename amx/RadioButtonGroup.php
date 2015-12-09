@@ -62,10 +62,11 @@ EOT;
 	public function setLabels ($labels){
 		foreach ($labels as $k=>$v){
 			$this->dataProvider[$k]['label'] =$v;
-			if (empty ($this->dataProvider[$k]['data']))
+			if (empty ($this->dataProvider[$k]['data'])){
 				$this->dataProvider[$k]['data'] =$v;
-		}
-	}
+			}
+        }
+    }
 		/** Asigna una lista de valores a la instancia de RadioButtonGroup, para el atributo html 'value'
 		* @param $data. Arreglo simple. Lista de valores
 		* @return void
@@ -73,8 +74,8 @@ EOT;
 	public function setData ($data){
 		foreach ($data as $k=>$v){
 			$this->dataProvider[$k]['data'] =$v;
-		}
-	}
+        }
+    }
 		/** Crea y devuelve el código html del RadioButtonGroup
 		* @return String. Código HTML resultante.
 		*/
@@ -111,4 +112,4 @@ EOT;
 	public function printHTML (){
 		echo $this->getHTML ();
 	}
-}?>
+}
