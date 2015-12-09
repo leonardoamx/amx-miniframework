@@ -14,19 +14,47 @@ class ValidationResult {
 	}
 
 	public function addErrorMessage ($text){
-		array_push ($this->messages, array ($text, self::ERROR));
+        $this->addMessage ($text, self::ERROR);
 		$this->errorCount++;
 		$this->issuesCount++;
 	}
 
 	public function addWarningMessage ($text){
-		array_push ($this->messages, array ($text, self::WARNING));
+        $this->addMessage ($text, self::WARNING);
 		$this->warningCount++;
 		$this->issuesCount++;
 	}
 
 	public function addInfoMessage ($text){
-		array_push ($this->messages, array ($text, self::INFO));
+        $this->addMessage ($text, self::INFO);
+	}
+
+	public function appendValidation (ValidationResult $validation){
+        foreach ($validation->messages as $item){
+            if ($item[1] == self::ERROR){
+                $this->addErrorMessage ($item[0]);
+            }
+            if ($item[1] == self::WARNING){
+                $this->addWarningMessage ($item[0]);
+            }
+            if ($item[1] == self::INFO){
+                $this->addInfoMessage ($item[0]);
+            }
+        }
+	}
+
+	private function addMessage ($text, $type){
+        // Insert only unique messages
+        $shouldAdd =true;
+        foreach ($this->messages as $item){
+            if ($text == $item[0]) {
+                $shouldAdd =false;
+                break;
+            }
+        }
+        if ($shouldAdd){
+            array_push ($this->messages, array ($text, $type));
+        }
 	}
 
 	public function getXML (){
@@ -45,7 +73,7 @@ EOT;
 	}
 
 	public function getJSON (){
-	
+
 		$messagesList =array ();
 		foreach ($this->messages as $item){
 			array_push ($messagesList, '{"type":"'.$item[1].'", "message":"'.$item[0].'"}');
@@ -64,9 +92,4 @@ EOT;
 		return $result;
 	}
 
-	private function addMessage ($text, $type){
-		array_push ($this->messages, array ($text, $type));
-	}
-
 }
-?>

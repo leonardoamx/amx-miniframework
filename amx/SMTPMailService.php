@@ -1,4 +1,5 @@
 <?php
+error_reporting (E_ERROR | E_PARSE);
 require_once "Mail.php";
 
 class SMTPMailService {
@@ -10,7 +11,7 @@ class SMTPMailService {
 
 	public function send ($host, $port, $username, $password){
 		$result =false;
-		$smtp = Mail::factory('smtp',
+		$smtp = @Mail::factory('smtp',
 			array (
 				'host' => $host,
 				'port' => $port,
@@ -33,12 +34,13 @@ class SMTPMailService {
 
 		$mail =$smtp->send($this->to, $cabeceras, $this->message);
 
-		if (PEAR::isError($mail)) {
+		if (@PEAR::isError($mail)) {
 			error_log ($mail->getMessage());
+            Logger::log ("Error sending email");
 		} else {
 			$result =true;
 		}
 
 		return $result;	
 	}
-}?>
+}

@@ -14,6 +14,8 @@
 	2.2 2010-05-10: Se agrega la propiedad $showPrompt, para mostrar u omitir el texto de la propiedad $prompt
 */
 class ComboBox {
+    const NO_VALUE =-1;
+
 		/** String. valor para el atributo html 'name' del combobox resultante */
 	public $name;
 		/** String. valor para el atributo html 'id' del combobox resultante, o el mismo de 'name' si no se usa */
@@ -73,10 +75,8 @@ class ComboBox {
 	public function getHTML (){
 		$selected ='';
 		$attributes =array();
-//		$size ='';
 		if ($this->size > 0)
 			array_push ($attributes, "size=\"{$this->size}\"");
-//			$size ='size="'.$this->size.'"';
 		if ($this->required)
 			array_push ($attributes, "required");
 		
@@ -87,8 +87,9 @@ class ComboBox {
 					<select id="{$this->id}" name="{$this->name}" $attributes>
 EOT;
 		if ($this->showPrompt){
+            $noValue =self::NO_VALUE;
 			$html .=<<<EOT
-						<option value="-1">{$this->prompt}</option>
+						<option value="{$noValue}">{$this->prompt}</option>
 EOT;
 		}
 		foreach ($this->dataProvider as $row){

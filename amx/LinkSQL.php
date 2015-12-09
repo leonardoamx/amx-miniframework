@@ -1,7 +1,7 @@
 <?php
 /** Clase abstracta para el manejo de datos en tablas
 * @author: Leonardo Molina; lama_amx AT hotmail DOT com
-* @version 7.0
+* @version 7.1
 */
 
 /* HOW TO USE
@@ -29,6 +29,7 @@ class table_name extends LinkSQL {
 
 /* changelog
 * @todo: opción de desactivar log
+	7.1	 2014-12-16: Added debug log to all of the methods
 	7.0	 2013-12-16: Migration to mysqli
 	6.10	 2013-06-04: Changed useFieldsList method to useFields
 	6.9.1	 2013-05-20: Little optimization of getField with useFieldsList method.
@@ -94,6 +95,7 @@ abstract class LinkSQL {
 
 	private $currentJoinQuery;
 	private $currentFieldList;
+	private $pendingSelectFields;
 	
 	private static $dbConnection;
 
@@ -117,13 +119,7 @@ abstract class LinkSQL {
 		self::connect ();
 		$consQ = self::$dbConnection->query($consulta);
 
-		$error =self::$dbConnection->error;
-		$logLevel =1;
-		if ($error!=''){
-			self::logError ($error, 'LinkSQL::sql');
-			$logLevel =0;
-		}
-		self::logError ($consulta, 'query', $logLevel);
+        self::logQuery ('sql', $consulta, 1);
 		$resultado =array ();
 		if ($returnResult){
 			if ($consQ){
@@ -158,6 +154,16 @@ abstract class LinkSQL {
 		$this->currentFieldList =$fieldList;
 	}
 
+		/* Agrega un campo a la consulta SELECT que se generará para los métodos getRecords, getRecord, getRecordset. El ajuste es temporal; se descarta una vez que el método ha sido llamado
+		* @param $expression: Cadena=''. nombre del campo a incluir o una expresión del tipo "tabla.campo AS alias"
+		*/
+	public function addSelectField ($expression){
+        if (empty ($this->pendingSelectFields)){
+            $this->pendingSelectFields =array ();
+        }
+        array_push ($this->pendingSelectFields, $expression);
+	}
+
 		/** Devuelve los registros de la tabla
 		** @param $where_str: Cadena=''. Condición para filtrar resultados.
 		** @param $order_str: Cadena=''. Campo sobre el que se ordenarán los registros.
@@ -187,6 +193,11 @@ abstract class LinkSQL {
 			$campos =$this->currentFieldList;
 			$this->currentFieldList =null;
 		}
+        if (!empty ($this->pendingSelectFields)){
+            array_unshift ($this->pendingSelectFields, $campos);
+            $campos =implode (',', $this->pendingSelectFields);
+            $this->pendingSelectFields =null;
+        }
 		$joinQuery ='';
 		if (!empty ($this->currentJoinQuery)){
 			$joinQuery =$this->currentJoinQuery;
@@ -198,13 +209,7 @@ abstract class LinkSQL {
 				self::connect ();
 				$result =self::$dbConnection->query ($query);
 				$this->lastSQL =$query;
-				$error =self::$dbConnection->error;
-				$logLevel =1;
-				if ($error != ''){
-					self::logError ($error, 'LinkSQL->_getRecords error');
-					$logLevel =0;
-				}
-				self::logError ($query, 'LinkSQL->_getRecords', $logLevel);
+                self::logQuery ('_getRecords', $query, 1);
 				break;
 			case self::ARRAY_FORMAT:
 				$this->lastSQL =$query;
@@ -255,8 +260,10 @@ abstract class LinkSQL {
 		$return =array ();
 		$id =intval ($id);
 		if ($id){
-			$return =$this->getRecords ("{$this->primaryKey}=$id", false, 1, 0);
-			$return =$return[0];
+			$matches =$this->getRecords ("{$this->primaryKey}=$id", false, 1, 0);
+            if (!empty ($matches)){
+                $return =$matches[0];
+            }
 		}
 		return $return;
 	}
@@ -276,17 +283,13 @@ abstract class LinkSQL {
 			$query ="INSERT INTO {$this->table} ($campos) VALUES ('$data')";
 		self::$dbConnection->query ($query);
 		$this->lastSQL =$query;
+        self::logQuery ('insertRecord', $query, 2);
 		$error =self::$dbConnection->error;
-		$logLevel =2;
-		if ($error != ''){
-			$logLevel =0;
-			self::logError ($error, 'insertRecord error', $logLevel);
-		} else {
+		if ($error == ''){
 			$lastIdInserted =$this->lastIdInserted();
 			if ($lastIdInserted > 0)
-				self::logError ($lastIdInserted, 'lastIdInserted at '.$this->table, $logLevel);
+				self::log ($lastIdInserted, "lastIdInserted at {$this->table}", 2);
 		}
-		self::logError ($query, 'LinkSQL->insertRecord', $logLevel);
 		return $this->lastIdInserted ();
 	}
 
@@ -316,14 +319,8 @@ abstract class LinkSQL {
 		$records =implode (', ', $records);
 		$query ="INSERT INTO {$this->table} ($campos) VALUES $records";
 		self::$dbConnection->query ($query);
-		$logLevel =2;
-		$error =self::$dbConnection->$error;
-		if ($error != ''){
-			self::logError ($error, 'insertRecords error');
-			$logLevel =0;
-		}
-		self::logError ($query, 'LinkSQL->insertRecords', $logLevel);
-		return self::$dbConnection->$affected_rows;
+        self::logQuery ('insertRecords', $query, 2);
+		return self::$dbConnection->affected_rows;
 	}
 
 		/** Actualiza registros de una tabla
@@ -344,6 +341,7 @@ abstract class LinkSQL {
 		$sql ="UPDATE {$this->table} SET $datos WHERE $where_str";
 		self::$dbConnection->query ($sql);
 		$this->lastSQL =$sql;
+        self::logQuery ('updateRecords', $sql, 2);
 		return $this->validateOperation ();
 	}
 
@@ -382,6 +380,7 @@ abstract class LinkSQL {
 		$sql ="DELETE FROM {$this->table} WHERE $where_str";
 		self::$dbConnection->query ($sql);
 		$this->lastSQL =$sql;
+        self::logQuery ('deleteRecordsByCondition', $sql, 2);
 		return $this->validateOperation ();
 	}
 
@@ -398,6 +397,7 @@ abstract class LinkSQL {
 		$sql	="UPDATE {$this->table} SET $field=\"$value\" WHERE {$this->primaryKey} IN ($ids)";
 		self::$dbConnection->query ($sql);
 		$this->lastSQL =$sql;
+        self::logQuery ('updateField', $sql, 2);
 		return $this->validateOperation ();
 	}
 
@@ -469,19 +469,22 @@ abstract class LinkSQL {
 		return $asArray ? $return : implode (', ', $return);
 	}
 
-	public static function logError ($variable, $message='', $level=0){
+	public static function logQuery ($method, $query, $logLevel=0){
+		$error =self::$dbConnection->error;
+		if ($error!=''){
+			self::log ($error, "LinkSQL::$method");
+			$logLevel =0;
+		}
+		self::log ($query, 'query', $logLevel);
+	}
+
+	public static function log ($variable, $message='', $level=0){
 		Logger::log ($variable, $message, $level);
 	}
 
 		/** @private */
 	protected function validateOperation (){
 		$result =self::$dbConnection->error;
-		$logLevel =2;
-		if ($result != ''){
-			self::logError ($result, 'SQL error');
-			$logLevel =0;
-		}
-		self::logError ($this->lastSQL, 'lastSQL', $logLevel);
-		return $result=='' ? true : false;
+		return $result=='';
 	}
 }?>
